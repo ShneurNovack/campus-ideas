@@ -1,0 +1,57 @@
+{
+ "note": "One-time comparison run on 2026-10-11 against this data. Search: 50 typed ideas with hand-written match rules, nDCG at 20. Kinds: share of programs whose nearest neighbors at other centers have the same kind of event. Results: rank correlation between a neighbor prediction and what happened, other centers only.",
+ "rows": [
+  {
+   "key": "old",
+   "label": "Before: bge-m3, name and blurb as one text",
+   "search": 0.745,
+   "kinds": 0.774,
+   "results": 0.34
+  },
+  {
+   "key": "bge-m3",
+   "label": "bge-m3, name and blurb cleaned and embedded apart",
+   "search": 0.774,
+   "kinds": 0.83,
+   "results": 0.349,
+   "chosen": true
+  },
+  {
+   "key": "qwen3",
+   "label": "qwen3-embedding-0.6b, same preparation",
+   "search": 0.759,
+   "kinds": 0.825,
+   "results": 0.332
+  },
+  {
+   "key": "gemma",
+   "label": "embeddinggemma-300m, same preparation",
+   "search": 0.727,
+   "kinds": 0.826,
+   "results": 0.336
+  },
+  {
+   "key": "wording",
+   "label": "Chosen vectors plus an exact-wording match (used in search)",
+   "search": 0.826,
+   "kinds": 0.824,
+   "results": 0.347
+  }
+ ],
+ "in_system": {
+  "note": "Inside the full neighbor system on a year it had not seen (rank correlation with turnout against the center's usual event).",
+  "old": {
+   "tuning_year": 0.498,
+   "test_year": 0.552
+  },
+  "new": {
+   "tuning_year": 0.518,
+   "test_year": 0.554
+  }
+ },
+ "also_tried": [
+  "Removing the directions that vary between posts of the same event (no gain)",
+  "Adding directions fitted to results (no gain)",
+  "A ridge model on the vectors blended with neighbors (no gain)"
+ ]
+}

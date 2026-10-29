@@ -1,0 +1,20 @@
+name = "campus-ideas"
+main = "worker/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/data/*", "/analyst/*", "/health"]
+
+[ai]
+binding = "AI"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "campus-ideas"
+
+[observability]
+enabled = true
