@@ -31,13 +31,16 @@ async function callJson(env, { system, user, schema, check, maxTokens = 900, tem
   let lastErr = "";
   for (const [model, mode] of attempts) {
     const messages = [{ role: "system", content: system }, { role: "user", content: mode === "retry" ? `${user}\n\nYour previous answer was not valid: ${lastErr}. Answer again with only the JSON object.` : user }];
+    // Gemma 4 thinks before it answers and spends the whole budget on the thought unless thinking is turned off
+    // at the template; Qwen3 on Workers AI answers in JSON mode as it is (and goes blank with the same flag).
+    const extra = model === MODELS.main ? { chat_template_kwargs: { enable_thinking: false } } : {};
     let res;
     try {
-      res = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature, response_format: { type: "json_schema", json_schema: schema } });
+      res = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature, response_format: { type: "json_schema", json_schema: schema }, ...extra });
     } catch (e) {
-      try { res = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature }); } catch (e2) { lastErr = String(e2?.message || e2); continue; }
+      try { res = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature, ...extra }); } catch (e2) { lastErr = String(e2?.message || e2); continue; }
     }
-    const raw = typeof res?.response === "string" ? res.response : JSON.stringify(res?.response ?? res);
+    const raw = textOf(res);
     const parsed = parseJson(raw);
     if (!parsed) { lastErr = "not JSON"; continue; }
     const problem = check ? check(parsed) : null;
@@ -47,9 +50,22 @@ async function callJson(env, { system, user, schema, check, maxTokens = 900, tem
   throw new Error(`the model did not return usable JSON (${lastErr})`);
 }
 
+// Workers AI answers in two shapes: {response} for the older models, OpenAI-style {choices[0].message.content}
+// for the chat models. The content may also be a parsed object already.
+function textOf(res) {
+  if (!res) return "";
+  if (typeof res === "string") return res;
+  const c = res.choices?.[0]?.message?.content;
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object") return JSON.stringify(c);
+  if (typeof res.response === "string") return res.response;
+  if (res.response && typeof res.response === "object") return JSON.stringify(res.response);
+  return "";
+}
+
 function parseJson(raw) {
   if (!raw) return null;
-  const s = String(raw).trim();
+  const s = String(raw).replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, "").trim();
   try { return JSON.parse(s); } catch (_) { /* fall through */ }
   const m = s.match(/\{[\s\S]*\}/);
   if (m) { try { return JSON.parse(m[0]); } catch (_) { /* fall through */ } }
