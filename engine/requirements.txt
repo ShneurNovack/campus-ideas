@@ -4,3 +4,4 @@ scipy>=1.13
 scikit-learn>=1.5
 pyluach>=2.2
 umap-learn>=0.5.6
+rapidfuzz>=3.9

@@ -24,7 +24,7 @@ jobs:
           cache: pip
           cache-dependency-path: engine/requirements.txt
       - run: pip install -r engine/requirements.txt
-      # embeddings already computed for unchanged event text
+      # embeddings and guest names already computed for unchanged event text
       - uses: actions/cache@v4
         with:
           path: |
@@ -33,6 +33,7 @@ jobs:
             engine/data/work/emb_blurb_keys.json
             engine/data/work/emb_blurb_vecs.npy
             engine/data/work/axes.npy
+            engine/data/work/speakers_cache.json
           key: embed2-cache-${{ github.run_id }}
           restore-keys: embed2-cache-
       - name: Pull the public data

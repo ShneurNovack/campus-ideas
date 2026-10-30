@@ -4,11 +4,12 @@ Every stage is arithmetic, statistics or embeddings. There is no language-model 
 
   python -m engine.pull        fetch the public API into data/raw (full backfill or refresh)
   python -m engine.run         compute everything into data/out
-  python -m engine.run push    compute, then upload data/out to the Worker's bucket
+  python -m engine.run push    compute, then upload the app payloads to the Worker's bucket
+  python -m engine.run app     only the Campus Ideas stages (lift, slots, trends, guests, payloads) from the saved state
 """
 import pickle, sys, time
 from .common import WORK, log
-from . import prepare, types, score, embed, programs, themes, ideas, centers as centers_mod, neighbors, timing, home, niches, export
+from . import prepare, types, score, embed, programs, themes, ideas, centers as centers_mod, neighbors, timing, home, niches, export, lift, slots, trends, speakers, app
 
 
 def main(push=False):
@@ -50,12 +51,28 @@ def main(push=False):
     state["coming"] = home.coming_up(events, centers, P, today)
     state["niches"] = niches.build(events, P, today)
     pickle.dump(state, open(f"{WORK}/state.pkl", "wb"), protocol=4)
-    engine = export.write_all(state)
+    export.write_all(state)                     # the Playbook payloads and the engine's self-checks (not published here)
+    engine = build_app(state, push)
     log("engine finished in", round(time.time() - t0, 1), "s")
+    return engine
+
+
+def build_app(state, push=False):
+    """The Campus Ideas stages: careful lifts, the time model, theme trends, guests, and the app payloads."""
+    events, today = state["events"], state["today"]
+    L = lift.run(events, state["P"], state["ideas"], state["theme_blob"], today)
+    log("lift:", L["method"]["summary"])
+    S = slots.build(events, today)
+    T = trends.build(events, state["theme_blob"], L["themes"], today)
+    G = speakers.run(events, lift.Pools(events), today)
+    engine = app.write(state, L, S, T, G)
     if push:
-        export.push()
+        app.push()
     return engine
 
 
 if __name__ == "__main__":
-    main(push=len(sys.argv) > 1 and sys.argv[1] == "push")
+    if "app" in sys.argv[1:]:        # rebuild only the Campus Ideas stages from the saved state
+        build_app(pickle.load(open(f"{WORK}/state.pkl", "rb")), push="push" in sys.argv[1:])
+    else:
+        main(push="push" in sys.argv[1:])

@@ -163,7 +163,7 @@ export async function explain(request, env) {
   const comps = Array.isArray(body?.comparables) ? body.comparables.slice(0, 8).map((c) => `${tidy(c.name, 80)} (${tidy(c.label, 20)})`) : [];
   if (!idea || !verdict) return json({ error: "idea and verdict required" }, 400);
   const { data } = await callJson(env, {
-    system: "You write two plain sentences for a campus rabbi about an event idea, from facts you are given. Do not invent facts. Never write any number. Write Shabbos, not Shabbat. Output JSON only.",
+    system: "You write two plain sentences for a campus rabbi about an event idea, from facts you are given. Do not add anything the facts do not say: no days, holidays, audiences or reasons. Never write any number. If a Hebrew term appears, spell it the Chabad way (Shabbos, Sukkos). Output JSON only.",
     user: `Idea: ${idea}\nWhat the data says: ${verdict}\nClosest past events: ${comps.join("; ") || "none"}\n\nReturn {"text": "two sentences"}`,
     schema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
     check: (d) => (typeof d.text === "string" && d.text.length > 20 ? null : "text missing"), maxTokens: 220, temperature: 0.3,
