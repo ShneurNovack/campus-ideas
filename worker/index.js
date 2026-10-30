@@ -9,7 +9,7 @@
 // /analyst/* needs the ANALYST_KEY secret in x-analyst-key, or a GitHub OIDC token from this repo's workflow.
 
 import { verifyGithubToken } from "./oidc.js";
-import { rerank, expand, judge, generate, explain, LLM_MODELS } from "./llm.js";
+import { rerank, expand, judge, generate, explain, extract, LLM_MODELS } from "./llm.js";
 
 // Embedding models the engine may ask for. The engine tests them against each other on its own data and names
 // the winner in public/embed.json, which the public search route then follows.
@@ -134,6 +134,7 @@ async function analyst(request, env, url) {
   if (!(await authed(request, env))) return json({ error: "unauthorized" }, 401);
   const key = url.searchParams.get("key") || "";
   const okKey = /^(public|private)\/[\w.\-\/]+$/.test(key) && !key.includes("..");
+  if (url.pathname === "/analyst/extract" && request.method === "POST") return await extract(request, env);
   if (url.pathname === "/analyst/embed" && request.method === "POST") {
     const body = await request.json().catch(() => null);
     const texts = Array.isArray(body?.texts) ? body.texts.slice(0, 96).map((t) => tidy(t)) : null;

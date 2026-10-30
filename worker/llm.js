@@ -172,4 +172,20 @@ export async function explain(request, env) {
   return json({ text: leaks(text) ? "" : text });
 }
 
+// ---- POST /api/extract { events: [{id, name, blurb}] } -> { people: [{id, name, role}] }   (analyst only)
+// Pulls guest names out of event text for the speakers page. Run by the engine, cached by event id.
+export async function extract(request, env) {
+  const body = await request.json().catch(() => null);
+  const evs = Array.isArray(body?.events) ? body.events.slice(0, 25).map((e, i) => ({ id: String(e.id ?? i), name: tidy(e.name, 140), blurb: tidy(e.blurb, 400) })) : null;
+  if (!evs?.length) return json({ error: "events[] required" }, 400);
+  const schema = { type: "object", properties: { people: { type: "array", items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, role: { type: "string" } }, required: ["id", "name", "role"] } } }, required: ["people"] };
+  const { data, model } = await callJson(env, {
+    system: "You read Jewish campus event listings and pull out the names of guest speakers, performers, chefs, authors or other featured people. A name must be a real person's name written in the text (first and last name, or a title with a last name). Skip the center's own rabbi or staff when the text makes that clear, skip organizations, bands' names that are not people, students, and generic words. role is one of: speaker, survivor, performer, chef, author, athlete, politician, soldier, scholar, other. If an event names nobody, list nothing for it. Output JSON only.",
+    user: `Events:\n${evs.map((e) => `[${e.id}] ${e.name}${e.blurb ? ` :: ${e.blurb}` : ""}`).join("\n")}\n\nReturn {"people":[{"id":"event id","name":"Full Name","role":"..."}]}`,
+    schema, check: (d) => (Array.isArray(d.people) ? null : "people must be a list"), maxTokens: 900, temperature: 0,
+  });
+  const ok = new Set(evs.map((e) => e.id));
+  return json({ people: data.people.filter((p) => ok.has(String(p.id)) && typeof p.name === "string" && p.name.trim().split(/\s+/).length >= 2).map((p) => ({ id: String(p.id), name: tidy(p.name, 60), role: tidy(p.role, 20) })), model });
+}
+
 export const LLM_MODELS = MODELS;
